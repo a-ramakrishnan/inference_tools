@@ -1,6 +1,6 @@
 import { CheckCircle2, CircleDashed, CircleDot, CircleSlash } from "lucide-react";
 import { Fragment, useMemo, useRef, useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { aggregate, fmt } from "../agg";
 import { api } from "../api";
 import { PageHead } from "../components/Layout";
@@ -142,7 +142,10 @@ export default function Architecture() {
   const node = NODES.find((n) => n.id === sel)!;
   const counts = (Object.keys(STATUS) as Status[]).map((s) => [s, NODES.filter((n) => n.id !== "goals" && n.status === s).length] as const);
   const running = live.status === "running";
-  const [tab, setTab] = useState<"map" | "life" | "worker">("map");
+  const [params, setParams] = useSearchParams();
+  const view = params.get("view");
+  const tab: "map" | "life" | "worker" = view === "life" || view === "worker" ? view : "map";
+  const setTab = (k: "map" | "life" | "worker") => setParams(k === "map" ? {} : { view: k }, { replace: true });
   const panel = useRef<HTMLDivElement>(null);
   const choose = (id: string) => {
     setSel(id);
