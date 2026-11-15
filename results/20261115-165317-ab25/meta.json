@@ -1,0 +1,71 @@
+{
+  "id": "20261115-165317-ab25",
+  "spec": {
+    "models": [
+      "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+      "qwen2.5-1.5b-instruct-q8_0.gguf"
+    ],
+    "threads": [
+      "all_p",
+      "all"
+    ],
+    "prompt_tokens": [
+      200,
+      1000
+    ],
+    "concurrency": [
+      1,
+      4,
+      8
+    ],
+    "repeats": 1,
+    "n_predict": 200,
+    "gpu_layers": 0,
+    "hourly_cost": null,
+    "cooldown_s": 5.0,
+    "control_run": true,
+    "label": "Demo sweep: CPU, Q4 vs Q8, 4 vs 10 threads"
+  },
+  "machine": {
+    "label": "Apple M5 \u00b7 16 GB",
+    "cpu": "Apple M5",
+    "arch": "arm64",
+    "os": "macOS 27.0.1",
+    "performance_cores": 4,
+    "efficiency_cores": 6,
+    "physical_cores": 10,
+    "logical_cores": 10,
+    "memory_gb": 16.0,
+    "gpu": "Apple GPU (Metal)",
+    "llama_cpp": "1.0.0 (build 12359, commit b1b770d90)"
+  },
+  "status": "completed",
+  "started_at": "2026-11-15T16:53:17",
+  "total_runs": 24,
+  "done_runs": 24,
+  "thermal_at_start": "fair",
+  "control": {
+    "run_id": "Q4_K_M-t4-p200-c1-r1",
+    "first": {
+      "ttft_ms_p50": 1689.59,
+      "decode_tps_mean": 48.259,
+      "total_tps": 34.401
+    },
+    "last": {
+      "ttft_ms_p50": 2333.85,
+      "decode_tps_mean": 38.244,
+      "total_tps": 26.532
+    },
+    "drift_pct": {
+      "ttft_ms_p50": 38.1,
+      "decode_tps_mean": -20.8,
+      "total_tps": -22.9
+    },
+    "thermal_first": "fair",
+    "thermal_last": "fair"
+  },
+  "error": null,
+  "thermal_at_end": "fair",
+  "finished_at": "2026-11-15T17:08:11",
+  "duration_s": 894.5
+}

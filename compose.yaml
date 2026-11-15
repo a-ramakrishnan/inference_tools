@@ -1,0 +1,43 @@
+# The gateway, two llama.cpp servers and a trace viewer, on one machine.
+#
+#   docker compose up --build
+#
+#   gateway   http://localhost:8080/v1/chat/completions   (API keys in gateway.docker.toml)
+#   jaeger    http://localhost:16686                      (one trace per request)
+#
+# The model files come from ./models (see the README for the download). Containers run llama.cpp on the CPU;
+# on a Mac, Docker cannot reach the Metal GPU, so `ibench gateway` (no Docker) is faster there.
+
+services:
+  fast:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    command: ["-m", "/models/qwen2.5-1.5b-instruct-q4_k_m.gguf", "-a", "qwen-fast",
+              "-np", "4", "-c", "16384", "-t", "4", "--no-webui", "--metrics",
+              "--host", "0.0.0.0", "--port", "8080"]
+    volumes: ["./models:/models:ro"]
+    restart: unless-stopped
+
+  quality:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    command: ["-m", "/models/qwen2.5-1.5b-instruct-q8_0.gguf", "-a", "qwen-quality",
+              "-np", "2", "-c", "16384", "-t", "4", "--no-webui", "--metrics",
+              "--host", "0.0.0.0", "--port", "8080"]
+    volumes: ["./models:/models:ro"]
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports: ["16686:16686", "4318:4318"]
+    restart: unless-stopped
+
+  gateway:
+    build: { context: ., dockerfile: Dockerfile.gateway }
+    environment:
+      IBENCH_GATEWAY_CONFIG: /app/gateway.docker.toml
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+    ports: ["8080:8080"]
+    volumes: ["./gateway-data:/app/gateway-data"]
+    depends_on: [fast, quality, jaeger]
+    restart: unless-stopped

@@ -1,0 +1,43 @@
+{
+  "id": "20261115-162503-ef10",
+  "spec": {
+    "models": [
+      "qwen2.5-1.5b-instruct-q8_0.gguf"
+    ],
+    "threads": [
+      "all_p"
+    ],
+    "prompt_tokens": [
+      200
+    ],
+    "concurrency": [
+      1,
+      4
+    ],
+    "repeats": 1,
+    "n_predict": 40,
+    "gpu_layers": 0,
+    "hourly_cost": null,
+    "label": "api test"
+  },
+  "machine": {
+    "label": "Apple M5 \u00b7 16 GB",
+    "cpu": "Apple M5",
+    "arch": "arm64",
+    "os": "macOS 27.0.1",
+    "performance_cores": 4,
+    "efficiency_cores": 6,
+    "physical_cores": 10,
+    "logical_cores": 10,
+    "memory_gb": 16.0,
+    "gpu": "Apple GPU (Metal)",
+    "llama_cpp": "1.0.0 (build 12359, commit b1b770d90)"
+  },
+  "status": "completed",
+  "started_at": "2026-11-15T16:25:03",
+  "total_runs": 2,
+  "done_runs": 2,
+  "error": null,
+  "finished_at": "2026-11-15T16:25:13",
+  "duration_s": 9.6
+}

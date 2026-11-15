@@ -1,0 +1,55 @@
+# ibench gateway: one OpenAI-compatible endpoint in front of two llama.cpp servers.
+#
+# Docker Compose version of gateway.toml: the backends are the `fast` and `quality` containers.
+#
+# The two backends are two quantizations of the same model, standing in for "small and fast" vs "larger".
+# Swap `gguf` for a bigger model to make the split real.
+
+[gateway]
+host = "0.0.0.0"
+port = 8080
+db = "gateway-data/usage.db"      # SQLite: one row per request
+long_prompt_chars = 6000          # model "auto": prompts longer than this (≈1,500 tokens) go to "quality"
+
+# API keys. These are local demo keys; set IBENCH_GATEWAY_KEYS="name:key,name:key" to replace them.
+[[keys]]
+name = "demo"
+key = "sk-ibench-demo"
+
+[[keys]]
+name = "agent"
+key = "sk-ibench-agent"
+
+[[keys]]
+name = "batch"
+key = "sk-ibench-batch"
+
+[[backends]]
+name = "fast"
+model = "qwen-fast"               # the model name clients ask for
+gguf = "qwen2.5-1.5b-instruct-q4_k_m.gguf"
+url = "http://fast:8080"
+threads = 4
+gpu_layers = 0                    # containers run on the CPU
+slots = 4                         # llama-server -np: requests it decodes together
+ctx_per_slot = 4096
+max_concurrency = 4               # requests the gateway lets through at once
+max_queue = 16                    # requests allowed to wait; beyond this the gateway answers 429
+
+[[backends]]
+name = "quality"
+model = "qwen-quality"
+gguf = "qwen2.5-1.5b-instruct-q8_0.gguf"
+url = "http://quality:8080"
+threads = 4
+gpu_layers = 0
+slots = 2
+ctx_per_slot = 8192
+max_concurrency = 2
+max_queue = 8
+
+[tracing]
+# OTLP/HTTP endpoint, e.g. http://127.0.0.1:4318 for a local Jaeger. Empty = traces stay in SQLite only.
+# The OTEL_EXPORTER_OTLP_ENDPOINT environment variable overrides this.
+otlp_endpoint = "http://jaeger:4318"
+ui_url = "http://127.0.0.1:16686"  # where the dashboard links for trace views

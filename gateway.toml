@@ -1,0 +1,56 @@
+# ibench gateway: one OpenAI-compatible endpoint in front of two llama.cpp servers.
+#
+#   ibench gateway                      # starts both llama-servers itself, then serves on :8080
+#   docker compose up                   # the same, as containers (uses gateway.docker.toml)
+#
+# The two backends are two quantizations of the same model, standing in for "small and fast" vs "larger".
+# Swap `gguf` for a bigger model to make the split real.
+
+[gateway]
+host = "127.0.0.1"
+port = 8080
+db = "gateway-data/usage.db"      # SQLite: one row per request
+long_prompt_chars = 6000          # model "auto": prompts longer than this (≈1,500 tokens) go to "quality"
+
+# API keys. These are local demo keys; set IBENCH_GATEWAY_KEYS="name:key,name:key" to replace them.
+[[keys]]
+name = "demo"
+key = "sk-ibench-demo"
+
+[[keys]]
+name = "agent"
+key = "sk-ibench-agent"
+
+[[keys]]
+name = "batch"
+key = "sk-ibench-batch"
+
+[[backends]]
+name = "fast"
+model = "qwen-fast"               # the model name clients ask for
+gguf = "qwen2.5-1.5b-instruct-q4_k_m.gguf"
+url = ""                          # empty: the gateway starts llama-server itself; otherwise use this URL
+threads = 4
+gpu_layers = 99                   # 0 = CPU only
+slots = 4                         # llama-server -np: requests it decodes together
+ctx_per_slot = 4096
+max_concurrency = 4               # requests the gateway lets through at once
+max_queue = 16                    # requests allowed to wait; beyond this the gateway answers 429
+
+[[backends]]
+name = "quality"
+model = "qwen-quality"
+gguf = "qwen2.5-1.5b-instruct-q8_0.gguf"
+url = ""
+threads = 4
+gpu_layers = 99
+slots = 2
+ctx_per_slot = 8192
+max_concurrency = 2
+max_queue = 8
+
+[tracing]
+# OTLP/HTTP endpoint, e.g. http://127.0.0.1:4318 for a local Jaeger. Empty = traces stay in SQLite only.
+# The OTEL_EXPORTER_OTLP_ENDPOINT environment variable overrides this.
+otlp_endpoint = ""
+ui_url = "http://127.0.0.1:16686"  # where the dashboard links for trace views

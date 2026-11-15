@@ -1,0 +1,39 @@
+0.00.058.685 I srv  llama_server: initializing ...
+0.00.058.692 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.060.184 I srv  init_listene: The UI is disabled
+0.00.060.185 I srv  init_listene: Use --ui/--no-ui (or deprecated --webui/--no-webui) to enable/disable
+0.00.060.556 W srv  server_setup: security: no API key is set and CORS allows all origins (see https://github.com/ggml-org/llama.cpp/pull/25655)
+0.00.062.535 I srv    load_model: loading model './models/qwen2.5-1.5b-instruct-q4_k_m.gguf'
+0.00.174.998 W load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.00.688.440 I cmn          init: llama threadpool init, n_threads = 2
+0.00.839.347 I srv    load_model: initializing, n_slots = 1, n_ctx_slot = 1536, kv_unified = 'false'
+0.00.844.527 I srv  server_run_i: model loaded
+0.00.844.530 I srv  server_on_li: listening on http://127.0.0.1:61518
+0.01.086.596 I slot get_availabl: id  0 | task -1 | selected slot by LRU, n_tokens = 0, t_last = -1
+0.01.086.607 I slot launch_slot_: id  0 | task 0 | processing task, is_child = 0
+0.01.665.999 I slot print_timing: id  0 | task 0 | prompt eval time =     398.60 ms /    32 tokens (   12.46 ms per token,    80.28 tokens per second)
+0.01.666.000 I slot print_timing: id  0 | task 0 |        eval time =     180.67 ms /     8 tokens (   25.81 ms per token,    38.74 tokens per second)
+0.01.666.001 I slot print_timing: id  0 | task 0 |       total time =     579.28 ms /    40 tokens
+0.01.666.001 I slot print_timing: id  0 | task 0 |    graphs reused =          7
+0.01.666.001 I slot print_timing: id  0 | task 0 |   graph reallocs =          0    /     0        (same size) / (changed size)
+0.01.666.031 I slot      release: id  0 | task 0 | stop processing: n_tokens = 39, truncated = 0
+0.01.686.281 I slot get_availabl: id  0 | task -1 | selected slot by LRU, n_tokens = 39, t_last = 113396485611
+0.01.686.396 I slot launch_slot_: id  0 | task 9 | processing task, is_child = 0
+0.07.483.291 I slot print_timing: id  0 | task 9 | n_gen =    105, tg =  34.48 t/s, tg_3s =  34.81 t/s
+0.10.435.176 I slot print_timing: id  0 | task 9 | prompt eval time =    2780.63 ms /   200 tokens (   13.90 ms per token,    71.93 tokens per second)
+0.10.435.178 I slot print_timing: id  0 | task 9 |        eval time =    5968.14 ms /   200 tokens (   29.99 ms per token,    33.34 tokens per second)
+0.10.435.178 I slot print_timing: id  0 | task 9 |       total time =    8748.77 ms /   400 tokens
+0.10.435.179 I slot print_timing: id  0 | task 9 |    graphs reused =        204
+0.10.435.179 I slot print_timing: id  0 | task 9 |   graph reallocs =          0    /     0        (same size) / (changed size)
+0.10.435.203 I slot      release: id  0 | task 9 | stop processing: n_tokens = 399, truncated = 0
+0.11.057.988 I slot get_availabl: id  0 | task -1 | selected slot by LRU, n_tokens = 399, t_last = 113405254782
+0.11.058.785 I slot launch_slot_: id  0 | task 210 | processing task, is_child = 0
+0.31.687.699 I slot print_timing: id  0 | task 210 | n_gen =    100, tg =  27.10 t/s, tg_3s =  27.37 t/s
+0.34.703.411 I slot print_timing: id  0 | task 210 | n_gen =    179, tg =  26.69 t/s, tg_3s =  26.20 t/s
+0.35.497.868 I slot print_timing: id  0 | task 210 | prompt eval time =   16975.76 ms /  1000 tokens (   16.98 ms per token,    58.91 tokens per second)
+0.35.497.870 I slot print_timing: id  0 | task 210 |        eval time =    7463.31 ms /   200 tokens (   37.50 ms per token,    26.66 tokens per second)
+0.35.497.870 I slot print_timing: id  0 | task 210 |       total time =   24439.07 ms /  1200 tokens
+0.35.497.871 I slot print_timing: id  0 | task 210 |    graphs reused =        401
+0.35.497.871 I slot print_timing: id  0 | task 210 |   graph reallocs =          0    /     0        (same size) / (changed size)
+0.35.497.909 I slot      release: id  0 | task 210 | stop processing: n_tokens = 1199, truncated = 0
+0.36.045.231 I srv    operator(): operator(): cleaning up before exit...

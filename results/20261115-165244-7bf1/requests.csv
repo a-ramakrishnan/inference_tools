@@ -1,0 +1,2 @@
+sweep_id,run_id,request_index,prompt_tokens,output_tokens,ttft_ms,e2e_ms,decode_tps,server_prompt_ms,server_prompt_tps,server_decode_tps,start_offset_ms,error
+20261115-165244-7bf1,Q4_K_M-t4-p200-c1-r1,0,200,200,1676.47,5649.5,50.088,1674.391,119.44641365129172,50.08892672266894,0.06,

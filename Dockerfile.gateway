@@ -1,0 +1,11 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+COPY pyproject.toml README.md ./
+COPY ibench ./ibench
+# editable install keeps the package's root at /app, where gateway-data/ and the config live
+RUN pip install --no-cache-dir -e '.[tracing]'
+COPY gateway.docker.toml ./
+
+EXPOSE 8080
+CMD ["ibench", "gateway", "--no-start", "--host", "0.0.0.0", "--port", "8080"]

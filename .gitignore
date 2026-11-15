@@ -1,0 +1,27 @@
+# model weights: downloaded, never committed (see README)
+models/*.gguf
+
+# python
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+
+# web
+web/node_modules/
+web/dist/
+web/*.tsbuildinfo
+
+# local
+.DS_Store
+.claude/settings.local.json
+
+# gateway runtime data (usage database, backend logs)
+gateway-data/
+
+# secrets and editors
+.env
+.env.*
+.vscode/
+.idea/
+*.pyc
