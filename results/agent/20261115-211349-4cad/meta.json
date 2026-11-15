@@ -1,0 +1,33 @@
+{
+  "id": "20261115-211349-4cad",
+  "kind": "agent",
+  "label": "Agent vs chat: 1, 4, 8 sessions on the fast backend (Metal)",
+  "spec": {
+    "gateway": "http://127.0.0.1:8080",
+    "key": "sk-ibench-agent",
+    "model": "qwen-fast",
+    "sessions": [
+      1,
+      4,
+      8
+    ],
+    "turns": 8,
+    "system_tokens": 700,
+    "tool_tokens": 250,
+    "turn_max_tokens": 96,
+    "chat_max_tokens": 200,
+    "conditions": [
+      "agent-cache",
+      "agent-nocache",
+      "chat"
+    ],
+    "temperature": 0.0,
+    "label": "Agent vs chat: 1, 4, 8 sessions on the fast backend (Metal)"
+  },
+  "started": "2026-11-15T21:13:49",
+  "status": "completed",
+  "total": 312,
+  "finished": "2026-11-15T21:19:54",
+  "duration_s": 364.9,
+  "done": 312
+}

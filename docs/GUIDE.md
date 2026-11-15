@@ -48,6 +48,11 @@ ibench run --models qwen2.5-1.5b-instruct-q4_k_m.gguf --threads 4,8 --prompt 200
 
 Presets live in [ibench/presets.py](../ibench/presets.py).
 
+```bash
+ibench agent                                 # agent vs chat traffic through a running gateway
+ibench agent --sessions 1,4 --turns 6 --tool-tokens 200 --conditions agent-cache,agent-nocache
+```
+
 ## What a run measures
 
 Each run sends `concurrency` streaming requests at the same moment. Each request has its own prompt of an exact token length and generates exactly `n_predict` tokens (`ignore_eos`), with prompt caching off so every request pays for its prompt.
@@ -100,6 +105,7 @@ Each sweep writes `results/<sweep id>/`:
 | Live | Progress, the running server's command line, per-request token progress, live memory, completed runs, event log |
 | Results | Key charts (TTFT, per-request and total throughput, memory, thread scaling), a chart explorer, a sortable table, per-request timelines, memory over the sweep, CSV downloads |
 | Compare | Sweeps from different machines side by side; import a zipped results folder |
+| Agent traffic | Runs the agent-traffic experiment; time to first token by turn, prefill cost per turn (reused vs computed), sessions vs slots, and a summary table |
 | Gateway | Backend status (in flight, queued), a streaming playground, a burst traffic generator with per-request queue/prefill/decode lanes, a live request log, and the per-key usage report |
 
 ## The gateway
@@ -128,6 +134,26 @@ Any OpenAI SDK works with `base_url="http://127.0.0.1:8080/v1"`.
 **Docker Compose:** `docker compose up --build` runs both llama.cpp servers (`ghcr.io/ggml-org/llama.cpp:server`, CPU), the gateway and Jaeger (traces at http://127.0.0.1:16686), using [`gateway.docker.toml`](../gateway.docker.toml). The GGUF files must already be in `models/`. Checked on an M5 MacBook Air with Docker Desktop: auth, both routing paths, streaming with usage, 429s under a burst, and one trace per request in Jaeger. Inside Docker on a Mac, llama.cpp runs on the CPU (no Metal), so the same 30-request burst queued up to 18.8 s and decoded at a median of 16 tokens/s; use `ibench gateway` for speed on a Mac.
 
 The benchmark sweeps do not go through the gateway: the load generator talks to llama-server directly, so gateway overhead never enters the engine numbers.
+
+## Agent traffic
+
+`ibench agent` compares two kinds of traffic through the gateway, against the same llama.cpp backend (`qwen-fast` by default):
+
+- **Agent:** a shared system prompt with three tool definitions (`search_code`, `read_file`, `run_tests`) and one task per session. Each turn the model is asked to call a tool; its tool call is real, the tool result is synthetic (seeded, about `--tool-tokens` tokens) and is appended, and the whole conversation is sent again. If the model answers in text instead, it is told to continue, so every session has the same number of turns. Run twice: with llama.cpp's prompt cache on (its default) and off (`cache_prompt: false`).
+- **Chat:** independent single-turn questions, short prompt, answers capped at 200 tokens.
+
+Each condition runs with 1, 4 and 8 concurrent sessions (`--sessions`). Every request is one row in `results/agent/<id>/requests.csv`: prompt, cached and computed tokens, output tokens, time to first token at the client, the gateway's queue wait for that request (joined by request id), decode speed and whether the model called a tool. Keep the final context under the backend's context per slot (4,096 tokens for `qwen-fast`): roughly 1,400 + turns × (tool tokens + 100).
+
+First run (M5 MacBook Air, `qwen-fast` on Metal, 8 turns, 312 requests, all succeeded):
+
+| | 1 session | 4 sessions | 8 sessions |
+| --- | --- | --- | --- |
+| Agent, cache on: TTFT p50 (of which queued) | 170 ms (0) | 308 ms (0) | 3.42 s (2.73 s) |
+| Agent, cache off: TTFT p50 (of which queued) | 1.29 s (0) | 1.61 s (0) | 7.29 s (5.13 s) |
+| Chat: TTFT p50 (of which queued) | 71 ms (0) | 203 ms (0) | 4.58 s (4.43 s) |
+| Agent, cache on: prompt tokens reused | 94% | 94% | 69% |
+
+Agent requests carried 34–46 prompt tokens per output token; chat requests 0.26. The model called a tool on 50% of agent turns.
 
 ## Running on other machines
 
@@ -163,10 +189,11 @@ The decode figure is a little lower in ibench because it decodes after a 200-tok
 ibench/            Python package: hardware detection, llama-server manager, prompt builder,
                    load generator, sweep runner, CLI, FastAPI app
 ibench/gateway/    OpenAI-compatible gateway: auth, routing, queue, usage store, tracing
+ibench/agent.py    Agent-traffic experiment (tool-calling loop, chat baseline)
 gateway.toml       Gateway keys and backends (gateway.docker.toml for Compose)
 compose.yaml       Two llama.cpp servers + gateway + Jaeger
 web/               React + TypeScript + Vite dashboard (Recharts)
-results/           Sweep outputs (committed)
+results/           Sweep outputs and results/agent/ runs (committed)
 models/            GGUF weights (not committed)
 PLAN.md            Project plan
 BUILD_LOG.md       What AI got right and wrong while building this

@@ -65,6 +65,15 @@ def main() -> None:
     r.add_argument("--cooldown", type=float, help="seconds to pause between runs (fanless laptops throttle)")
     r.add_argument("--no-control", action="store_true", help="skip re-running the first configuration at the end")
     r.add_argument("--label", default="")
+    ag = sub.add_parser("agent", help="agent-style vs chat traffic through the gateway (gateway must be running)")
+    ag.add_argument("--sessions", type=_csv(int), default=[1, 4, 8], help="concurrent sessions, comma separated")
+    ag.add_argument("--turns", type=int, default=8, help="requests per session")
+    ag.add_argument("--tool-tokens", type=int, default=250, help="approximate size of each tool result")
+    ag.add_argument("--system-tokens", type=int, default=700, help="approximate size of the shared system prompt")
+    ag.add_argument("--conditions", type=_csv(str), default=["agent-cache", "agent-nocache", "chat"])
+    ag.add_argument("--model", default="qwen-fast", help="gateway model name")
+    ag.add_argument("--gateway", default="http://127.0.0.1:8080")
+    ag.add_argument("--label", default="")
     a = ap.parse_args()
 
     if a.cmd == "serve":
@@ -79,6 +88,20 @@ def main() -> None:
         app = create_app(a.config, start_backends=not a.no_start)
         print(f"gateway: {len(cfg.backends)} backends, {len(cfg.keys)} API keys, usage in {cfg.db_path}")
         uvicorn.run(app, host=a.host or cfg.host, port=a.port or cfg.port, log_level="warning")
+        return
+    if a.cmd == "agent":
+        from .agent import AgentRun, AgentSpec
+
+        def show(kind: str, d: dict) -> None:
+            if kind == "agent_phase":
+                print(f"\n{d['condition']}, {d['sessions']} session(s)")
+            elif kind == "agent_request":
+                r = d["row"]
+                print(f"  [{d['done']}/{d['total']}] s{r['session']} t{r['turn']}  prompt {r['prompt_tokens']} "
+                      f"(cached {r['cached_tokens']})  ttft {r['ttft_ms']} ms  {r['tool_name'] or ''}{r['error'] or ''}")
+        spec = AgentSpec(gateway=a.gateway, model=a.model, sessions=a.sessions, turns=a.turns, tool_tokens=a.tool_tokens,
+                         system_tokens=a.system_tokens, conditions=a.conditions, label=a.label or "CLI agent run")
+        print(AgentRun(spec, on_event=show).run())
         return
     if a.cmd == "info":
         print(json.dumps({"machine": detect(), "models": list_models()}, indent=2))

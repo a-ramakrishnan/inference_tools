@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { LiveProvider } from "./live";
+import Agent from "./pages/Agent";
 import Architecture from "./pages/Architecture";
 import Compare from "./pages/Compare";
 import Gateway from "./pages/Gateway";
@@ -26,6 +27,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/results/:id" element={<Results />} />
             <Route path="/compare" element={<Compare />} />
             <Route path="/gateway" element={<Gateway />} />
+            <Route path="/agent" element={<Agent />} />
           </Routes>
         </Layout>
       </LiveProvider>
