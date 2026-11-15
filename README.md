@@ -4,6 +4,7 @@ Benchmarks and serving tools for small open LLMs on [llama.cpp](https://github.c
 
 - **`ibench run`** sweeps a model across quantization, threads, prompt length and concurrency, and records time to first token, tokens per second and peak memory to CSV.
 - **`ibench gateway`** is an OpenAI-compatible endpoint in front of two llama.cpp servers, with API keys, routing, a bounded queue per backend, per-key usage and OpenTelemetry traces.
+- **`ibench agent`** sends agent-style traffic (a multi-turn tool-calling loop with a growing context) and chat traffic through the gateway, with llama.cpp's prompt cache on and off.
 - **`ibench serve`** opens the dashboard for running sweeps, watching them live, comparing results and driving the gateway.
 
 Model used so far: Qwen2.5-1.5B-Instruct in Q4_K_M and Q8_0.
@@ -31,6 +32,10 @@ All screenshots are from real runs on an Apple M5 MacBook Air (16 GB).
 **Inside the worker:** llama.cpp slots and their KV cache, and a memory budget predicted from the GGUF header compared with the measured peak.
 
 ![Inside the worker view](docs/screenshots/architecture-worker.png)
+
+**Agent traffic:** a tool-calling agent resends its growing conversation every turn; chat sends short, independent questions. Time to first token by turn with the prompt cache on and off, what each turn costs to prefill, and what happens with more sessions than llama.cpp slots.
+
+![Agent traffic page](docs/screenshots/agent-traffic.png)
 
 **Gateway:** backend status, a streaming playground, and a 30-request burst: 4 run at a time, 16 wait, and the rest get 429.
 

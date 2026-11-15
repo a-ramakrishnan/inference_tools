@@ -334,6 +334,67 @@ async def gateway_load(req: LoadRequest):
     return {"tag": tag, "requests": req.requests}
 
 
+# ---------------------------------------------------------------- agent-traffic experiment
+class AgentRequest(BaseModel):
+    sessions: list[int] = [1, 4, 8]
+    turns: int = 8
+    tool_tokens: int = 250
+    system_tokens: int = 700
+    model: str = "qwen-fast"
+    conditions: list[str] = ["agent-cache", "agent-nocache", "chat"]
+    label: str = ""
+
+
+class ActiveAgent:
+    run: "AgentRun | None" = None
+    thread: threading.Thread | None = None
+
+
+@app.post("/api/agent-runs")
+def start_agent_run(req: AgentRequest):
+    from .agent import AgentRun, AgentSpec
+    if ActiveAgent.thread and ActiveAgent.thread.is_alive():
+        raise HTTPException(409, f"agent run {ActiveAgent.run.id} is still running")
+    if Active.thread and Active.thread.is_alive():
+        raise HTTPException(409, "a sweep is running; the two would compete for the machine")
+    if not (1 <= req.turns <= 30) or any(n < 1 or n > 32 for n in req.sessions) or not req.sessions:
+        raise HTTPException(400, "turns 1-30, sessions 1-32")
+    bad = [c for c in req.conditions if c not in ("agent-cache", "agent-nocache", "chat")]
+    if bad or not req.conditions:
+        raise HTTPException(400, f"unknown conditions: {bad}")
+    spec = AgentSpec(gateway=GATEWAY_URL, **req.model_dump())
+    ActiveAgent.run = AgentRun(spec, on_event=bus.publish)
+    ActiveAgent.thread = threading.Thread(target=ActiveAgent.run.run, daemon=True)
+    ActiveAgent.thread.start()
+    return {"id": ActiveAgent.run.id, "total": ActiveAgent.run.total}
+
+
+@app.get("/api/agent-runs")
+def list_agent_runs():
+    from .agent import list_runs
+    return list_runs()
+
+
+@app.get("/api/agent-runs/{rid}")
+def get_agent_run(rid: str):
+    from .agent import AGENT_DIR
+    d = AGENT_DIR / rid
+    if not (d / "meta.json").exists() or "/" in rid or ".." in rid:
+        raise HTTPException(404, "no such agent run")
+    meta = json.loads((d / "meta.json").read_text())
+    live = ActiveAgent.run if ActiveAgent.run and ActiveAgent.run.id == rid and ActiveAgent.thread.is_alive() else None
+    rows = [dict(r) for r in live.rows] if live else read_csv(d / "requests.csv")
+    return {"meta": meta, "rows": rows}
+
+
+@app.post("/api/agent-runs/{rid}/cancel")
+def cancel_agent_run(rid: str):
+    if not (ActiveAgent.run and ActiveAgent.run.id == rid and ActiveAgent.thread.is_alive()):
+        raise HTTPException(404, "that agent run is not running")
+    ActiveAgent.run.cancelled = True
+    return {"ok": True}
+
+
 # ---------------------------------------------------------------- the built dashboard
 _DIST = ROOT / "web" / "dist"
 if _DIST.exists():

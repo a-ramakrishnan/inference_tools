@@ -272,3 +272,5 @@ table.data tr.selected td { background: var(--accent-soft); }
   .g2, .g3, .g4 { grid-template-columns: 1fr; }
   .page-head h1 { font-size: 20px; }
 }
+
+.legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; vertical-align: -1px; }

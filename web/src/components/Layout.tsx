@@ -1,4 +1,4 @@
-import { Activity, BarChart3, GitCompareArrows, LayoutDashboard, Monitor, Moon, Network, Play, Router, Sun } from "lucide-react";
+import { Activity, BarChart3, Bot, GitCompareArrows, LayoutDashboard, Monitor, Moon, Network, Play, Router, Sun } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { useLive } from "../live";
@@ -48,6 +48,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <NavLink to="/results"><BarChart3 size={16} />Results</NavLink>
           <NavLink to="/compare"><GitCompareArrows size={16} />Compare</NavLink>
           <NavLink to="/gateway"><Router size={16} />Gateway</NavLink>
+          <NavLink to="/agent"><Bot size={16} />Agent traffic</NavLink>
         </nav>
         <div className="sidebar-foot">
           <div className="theme-toggle" role="group" aria-label="Theme">
