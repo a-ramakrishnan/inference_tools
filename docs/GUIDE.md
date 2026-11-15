@@ -159,6 +159,10 @@ Agent requests carried 34–46 prompt tokens per output token; chat requests 0.2
 
 Run the same preset on each machine, then bring the folders together.
 
+**Colab (x86):** open [notebooks/colab_x86.ipynb](../notebooks/colab_x86.ipynb) in Colab ([open directly](https://colab.research.google.com/github/a-ramakrishnan/inference_tools/blob/main/notebooks/colab_x86.ipynb)), pick a CPU runtime, and run all cells. It builds llama.cpp from tag `b12359` (the same build as the laptop runs), downloads the 4-bit model, runs a smoke test and the `cloud` preset, and downloads a zip of the results for the Compare page. A free CPU runtime has one physical core; a High-RAM CPU runtime has more. Colab has no hourly price, so cost per million tokens is left out unless you set one.
+
+**Other Linux machines:**
+
 ```bash
 # on the cloud instance (Ubuntu): build llama.cpp, then the same steps as above
 git clone https://github.com/ggml-org/llama.cpp && cmake -S llama.cpp -B llama.cpp/build -DCMAKE_BUILD_TYPE=Release && cmake --build llama.cpp/build -j --target llama-server
@@ -171,6 +175,8 @@ cd results && zip -r <sweep id>.zip <sweep id>     # then: Compare → Import re
 ```
 
 On Linux every physical core counts as a performance core, so `all_p` and `all` are the same there.
+
+An Arm server (for example AWS Graviton) has not been run: there is no AWS account for this project. The Arm side of the comparison is the Apple Silicon laptop.
 
 ## Validation
 
@@ -195,6 +201,7 @@ compose.yaml       Two llama.cpp servers + gateway + Jaeger
 web/               React + TypeScript + Vite dashboard (Recharts)
 results/           Sweep outputs and results/agent/ runs (committed)
 models/            GGUF weights (not committed)
+notebooks/         Colab notebook for the x86 runs
 PLAN.md            Project plan
 BUILD_LOG.md       What AI got right and wrong while building this
 ```
