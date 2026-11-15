@@ -20,6 +20,10 @@ All screenshots are from real runs on an Apple M5 MacBook Air (16 GB).
 
 ![Results page](docs/screenshots/results.png)
 
+**Platform map:** an LLM serving platform in four layers, with how far this repo builds each component and the numbered path one chat request takes through them.
+
+![Platform map](docs/screenshots/architecture-map.png)
+
 **Request lifecycle:** where the time goes for 8 concurrent requests: waiting, prompt processing and decoding, per request.
 
 ![Request lifecycle view](docs/screenshots/architecture-lifecycle.png)

@@ -5,7 +5,6 @@ import { aggregate, fmt } from "../agg";
 import { api } from "../api";
 import { PageHead } from "../components/Layout";
 import { useAsync } from "../hooks";
-import { useLive } from "../live";
 import { Lifecycle } from "../components/arch/Lifecycle";
 import { Worker } from "../components/arch/Worker";
 
@@ -25,104 +24,99 @@ interface Node {
   title: string;
   lines: string[];           // what this repo uses for it, shown in the box
   status: Status;
-  x: number; y: number; w: number; h: number;
-  shape?: "db";
   role: string;              // what the component does in a production platform
   here: string[];            // how this repo covers it
   where?: { label: string; to?: string; code?: string }[];
 }
 
 const NODES: Node[] = [
-  { id: "client", title: "Client apps", lines: ["ibench load generator", "N concurrent streams"], status: "built", x: 20, y: 60, w: 170, h: 90,
+  { id: "client", title: "Client apps", lines: ["ibench load generator", "N concurrent streams"], status: "built",
     role: "Applications calling the platform through an SDK or REST, usually streaming.",
     here: ["The load generator sends N streaming requests at once, each with its own prompt of an exact token length.", "Every request produces exactly the requested number of tokens (ignore_eos), so runs are comparable.", "The dashboard is a second client: it drives sweeps and watches them live."],
     where: [{ label: "ibench/loadgen.py", code: "ibench/loadgen.py" }, { label: "ibench/prompts.py", code: "ibench/prompts.py" }, { label: "New sweep page", to: "/run" }] },
-  { id: "lb", title: "Global load balancer", lines: ["single machine"], status: "out", x: 205, y: 70, w: 192, h: 70,
+  { id: "lb", title: "Global load balancer", lines: ["single machine"], status: "out",
     role: "Spreads traffic across regions and clusters; health-checks and fails over.",
     here: ["Not built: everything runs on one machine. Results from several machines are compared offline instead."] },
-  { id: "gateway", title: "Inference API gateway", lines: ["OpenAI-compatible", "/v1/chat/completions", "streaming pass-through"], status: "built", x: 430, y: 40, w: 290, h: 150,
+  { id: "gateway", title: "Inference API gateway", lines: ["OpenAI-compatible", "/v1/chat/completions", "streaming pass-through"], status: "built",
     role: "The one public entry point: OpenAI-style endpoints, authentication, rate limits, request validation.",
     here: ["One OpenAI-compatible endpoint (/v1/chat/completions, /v1/models) in front of two llama.cpp servers; streaming responses pass straight through.", "The benchmark load generator still calls llama-server's /completion directly, so the gateway's overhead never enters the engine measurements.", "Docker Compose runs the two servers, the gateway and Jaeger together; on a Mac the containers use the CPU only, so the native gateway with Metal is several times faster."],
     where: [{ label: "ibench/gateway/app.py", code: "ibench/gateway/app.py" }, { label: "Gateway page", to: "/gateway" }] },
-  { id: "goals", title: "Core goals", lines: [], status: "built", x: 930, y: 30, w: 290, h: 180,
+  { id: "goals", title: "Core goals", lines: [], status: "built",
     role: "What an inference platform is judged on.", here: [] },
-  { id: "auth", title: "Auth & usage metering", lines: ["API keys from a config file", "tokens per key"], status: "built", x: 15, y: 240, w: 215, h: 100,
+  { id: "auth", title: "Auth & usage metering", lines: ["API keys from a config file", "tokens per key"], status: "built",
     role: "Validates API keys, enforces tiers and quotas, meters usage per key.",
     here: ["Bearer API keys read from gateway.toml (or an environment variable); an unknown key gets 401.", "Every request, including rejected ones, writes a usage row: key, model, backend, input/output/cached tokens and timings.", "Quotas, tiers and user management are out of scope."],
     where: [{ label: "gateway.toml", code: "gateway.toml" }, { label: "Usage report", to: "/gateway" }] },
-  { id: "store", title: "Usage store", lines: ["SQLite (Postgres in prod)"], status: "built", x: 20, y: 395, w: 200, h: 95, shape: "db",
+  { id: "store", title: "Usage store", lines: ["SQLite (Postgres in prod)"], status: "built",
     role: "System of record for accounts, keys and usage.",
     here: ["A SQLite requests table written by the gateway (gateway-data/usage.db), grouped into usage by key, model, backend or day and exported as CSV."],
     where: [{ label: "ibench/gateway/store.py", code: "ibench/gateway/store.py" }] },
-  { id: "router", title: "Model router", lines: ["by model name", "or prompt length"], status: "built", x: 255, y: 300, w: 175, h: 130,
+  { id: "router", title: "Model router", lines: ["by model name", "or prompt length"], status: "built",
     role: "Chooses a model and backend for each request: by model, region, canary version or fallback.",
     here: ["Routes by the requested model name (qwen-fast → 4-bit backend, qwen-quality → 8-bit backend).", "model=auto routes by prompt length: an estimate of characters ÷ 4 against a threshold sends long prompts to the backend with the larger context. The reason is recorded on every request.", "Learned or cost-optimized routing is out of scope."],
     where: [{ label: "ibench/gateway/app.py", code: "ibench/gateway/app.py" }] },
-  { id: "scheduler", title: "Request queue", lines: ["bounded queue", "per-backend limit", "429 when full"], status: "built", x: 455, y: 300, w: 190, h: 130,
+  { id: "scheduler", title: "Request queue", lines: ["bounded queue", "per-backend limit", "429 when full"], status: "built",
     role: "Admission control: priority tiers, fair sharing, separate prefill and decode queues, shedding load.",
     here: ["Each backend has a concurrency limit (matching its llama.cpp slots) and a bounded wait queue; once the queue is full, the gateway answers 429 instead of letting latency grow without bound.", "Queue wait is recorded per request. A 30-request burst against the fast backend (4 running, 16 waiting) served 20 and rejected 10, with waits stepping up four at a time.", "Priority tiers and separate prefill/decode queues are out of scope."],
     where: [{ label: "Traffic generator", to: "/gateway" }, { label: "ibench/gateway/app.py", code: "ibench/gateway/app.py" }] },
-  { id: "engine", title: "Continuous batching", lines: ["llama.cpp server", "slots share each step"], status: "built", x: 670, y: 300, w: 185, h: 130,
+  { id: "engine", title: "Continuous batching", lines: ["llama.cpp server", "slots share each step"], status: "built",
     role: "Batches tokens from many requests into each forward pass, so throughput grows with load.",
     here: ["llama.cpp's server batches all active slots into every decode step (continuous batching).", "The concurrency sweep (1, 4, 8) shows the trade: total tokens/s rises while each request slows down.", "Paged attention and speculative decoding are not used."],
     where: [{ label: "Total throughput chart", to: "/results" }] },
-  { id: "workers", title: "Worker pool", lines: ["llama-server processes", "CPU (Arm, x86) or Metal", "restarted per config"], status: "built", x: 880, y: 250, w: 190, h: 200,
+  { id: "workers", title: "Worker pool", lines: ["llama-server processes", "CPU (Arm, x86) or Metal", "restarted per config"], status: "built",
     role: "The accelerators that run the model, with sharding, health checks and model loading.",
     here: ["One llama-server process per configuration, started with the exact threads, slots and GPU layers under test, health-checked before use.", "The same CLI runs on an Apple Silicon laptop, an x86 instance, a Graviton instance or Colab, so the CPUs can be compared."],
     where: [{ label: "ibench/server.py", code: "ibench/server.py" }, { label: "Compare machines", to: "/compare" }] },
-  { id: "kv", title: "KV cache", lines: ["per slot, sized", "prompt + output", "prefix cache off"], status: "partial", x: 1090, y: 260, w: 140, h: 120,
+  { id: "kv", title: "KV cache", lines: ["per slot, sized", "prompt + output", "prefix cache off"], status: "partial",
     role: "Keeps attention keys and values so earlier tokens aren't recomputed; prefix caching reuses shared prompts.",
     here: ["Each slot gets a KV cache sized for the longest prompt plus output; its cost shows in peak memory as concurrency rises.", "Prefix caching is deliberately off in the benchmark (cache_prompt: false), so every request pays for its prompt.", "Next: agent-style traffic with a growing context, with and without prompt caching."] },
-  { id: "registry", title: "Model registry", lines: ["models/*.gguf", "Q4_K_M · Q8_0"], status: "built", x: 1060, y: 480, w: 170, h: 110, shape: "db",
+  { id: "registry", title: "Model registry", lines: ["models/*.gguf", "Q4_K_M · Q8_0"], status: "built",
     role: "Stores weights, checkpoints and quantized variants; workers load from it.",
     here: ["models/ holds Qwen2.5-1.5B-Instruct in two quantizations, 4-bit (Q4_K_M) and 8-bit (Q8_0).", "Weights are loaded without mmap so the memory measurement includes them."],
     where: [{ label: "Overview: models", to: "/" }] },
-  { id: "streaming", title: "Streaming responses", lines: ["SSE token stream", "TTFT = first chunk"], status: "built", x: 20, y: 610, w: 190, h: 100,
+  { id: "streaming", title: "Streaming responses", lines: ["SSE token stream", "TTFT = first chunk"], status: "built",
     role: "Streams tokens back as server-sent events; handles stop sequences.",
     here: ["Every request streams; time to first token is taken when the first token arrives at the client.", "The dashboard's live view is also an SSE stream from the backend."],
     where: [{ label: "Live page", to: "/live" }] },
-  { id: "autoscaler", title: "Autoscaler", lines: ["fixed capacity"], status: "out", x: 240, y: 610, w: 180, h: 100,
+  { id: "autoscaler", title: "Autoscaler", lines: ["fixed capacity"], status: "out",
     role: "Adds and removes workers on queue depth or utilization; scales cold models to zero.",
     here: ["Not built. Kubernetes and autoscaling are out of scope."] },
-  { id: "monitoring", title: "Monitoring", lines: ["TTFT · tok/s · memory", "per-request timelines", "OpenTelemetry traces"], status: "built", x: 450, y: 600, w: 215, h: 130,
+  { id: "monitoring", title: "Monitoring", lines: ["TTFT · tok/s · memory", "per-request timelines", "OpenTelemetry traces"], status: "built",
     role: "Metrics, traces and alerts: TTFT, tokens/s, accelerator memory, queue wait, errors.",
     here: ["Every run records TTFT, tokens/s per request and in total, prompt speed, peak memory and errors to CSV, with one row per request too.", "The dashboard charts them live and after the fact.", "The gateway records an OpenTelemetry trace per request (queue wait, prefill, decode spans) and exports it over OTLP; under Docker Compose they appear in Jaeger, linked from the Gateway page. Dashboards and alerting are out of scope."],
     where: [{ label: "Results", to: "/results" }, { label: "ibench/sweep.py", code: "ibench/sweep.py" }] },
-  { id: "billing", title: "Usage & cost", lines: ["$ per 1M output tokens", "tokens per API key"], status: "partial", x: 695, y: 620, w: 195, h: 100,
+  { id: "billing", title: "Usage & cost", lines: ["$ per 1M output tokens", "tokens per API key"], status: "partial",
     role: "Input and output tokens per request, cost per request, billing.",
     here: ["Given an instance price, each run reports cost per million output tokens (price ÷ total throughput).", "The gateway reports input, output and cached tokens per API key, model, backend or day. Billing is out of scope."],
     where: [{ label: "Usage report", to: "/gateway" }] },
-  { id: "warehouse", title: "Data warehouse", lines: ["CSV in results/"], status: "out", x: 920, y: 640, w: 170, h: 80,
+  { id: "warehouse", title: "Data warehouse", lines: ["CSV in results/"], status: "out",
     role: "Long-term store for usage and performance analytics.",
     here: ["Not built: results/<sweep>/*.csv files stand in, and are committed with the repo."] },
 ];
 
-const EDGES: { from: [number, number]; to: [number, number]; label?: string; labelAt?: [number, number]; flow?: boolean; both?: boolean; via?: [number, number][] }[] = [
-  { from: [190, 105], to: [205, 105], flow: true },
-  { from: [397, 105], to: [430, 105], flow: true },
-  { from: [575, 190], to: [575, 230], via: [[575, 230], [342, 230]], flow: true },
-  { from: [342, 230], to: [342, 300], flow: true },
-  { from: [430, 365], to: [455, 365], flow: true },
-  { from: [645, 365], to: [670, 365], flow: true },
-  { from: [855, 365], to: [880, 365], flow: true },
-  { from: [1070, 320], to: [1090, 320], both: true },
-  { from: [1145, 480], to: [1145, 380], via: [[1145, 380]], label: "load weights" },
-  { from: [430, 120], to: [220, 270], via: [[300, 120], [300, 270]], both: true },
-  { from: [120, 340], to: [120, 395], both: true },
-  { from: [105, 150], to: [105, 230], both: false },
-  { from: [20, 130], to: [20, 660], via: [[6, 130], [6, 660]], label: "stream tokens", labelAt: [1, 600], flow: true },
-  { from: [330, 610], to: [330, 560], via: [[330, 560], [975, 560], [975, 450]] },
-  { from: [890, 670], to: [920, 670] },
+// The platform as layers, top to bottom, and the order one chat request visits components.
+const LAYERS: { id: string; title: string; sub: string; nodes: string[] }[] = [
+  { id: "ingress", title: "Ingress", sub: "where requests arrive", nodes: ["client", "lb", "gateway"] },
+  { id: "control", title: "Control plane", sub: "who may run, where, and when", nodes: ["auth", "router", "scheduler", "store"] },
+  { id: "data", title: "Data plane", sub: "where tokens are computed", nodes: ["engine", "workers", "kv", "registry"] },
+  { id: "ops", title: "Egress & operations", sub: "what goes back out, and what is recorded", nodes: ["streaming", "monitoring", "billing", "autoscaler", "warehouse"] },
 ];
-
-function path(e: (typeof EDGES)[number]) {
-  const pts = [e.from, ...(e.via ?? []), e.to];
-  return pts.map((p, i) => `${i ? "L" : "M"}${p[0]},${p[1]}`).join(" ");
-}
+const PATH: { id: string; label: string }[] = [
+  { id: "client", label: "Client sends" },
+  { id: "gateway", label: "Gateway" },
+  { id: "auth", label: "Key check" },
+  { id: "router", label: "Pick backend" },
+  { id: "scheduler", label: "Wait for a slot" },
+  { id: "engine", label: "Batch" },
+  { id: "workers", label: "Prefill + decode" },
+  { id: "streaming", label: "Stream back" },
+  { id: "billing", label: "Meter + trace" },
+];
+const STEP: Record<string, number> = Object.fromEntries(PATH.map((p, i) => [p.id, i + 1]));
 
 export default function Architecture() {
-  const live = useLive();
-  const [sel, setSel] = useState<string>("workers");
+  const [sel, setSel] = useState<string>("gateway");
+  const [hover, setHover] = useState<string | null>(null);
   const sys = useAsync(api.system);
   const sweeps = useAsync(api.sweeps);
   const latest = sweeps.data?.find((s) => s.done_runs > 0);
@@ -141,7 +135,6 @@ export default function Architecture() {
   ];
   const node = NODES.find((n) => n.id === sel)!;
   const counts = (Object.keys(STATUS) as Status[]).map((s) => [s, NODES.filter((n) => n.id !== "goals" && n.status === s).length] as const);
-  const running = live.status === "running";
   const [params, setParams] = useSearchParams();
   const view = params.get("view");
   const tab: "map" | "life" | "worker" = view === "life" || view === "worker" ? view : "map";
@@ -168,59 +161,42 @@ export default function Architecture() {
 
       {tab === "map" && (<>
       <div className="arch-wrap">
-        <div className="card card-pad arch-scroll">
-          <svg className="arch-svg" viewBox="-22 0 1272 750" role="img" aria-label="Inference platform architecture diagram">
-            <defs>
-              <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                <path d="M0,0 L10,5 L0,10 z" fill="var(--text-muted)" />
-              </marker>
-            </defs>
-            <style>{`
-              .edge { fill: none; stroke: var(--text-muted); stroke-width: 1.5; }
-              .edge.flowing { stroke: var(--accent); stroke-dasharray: 6 6; animation: flow 0.9s linear infinite; }
-              @keyframes flow { to { stroke-dashoffset: -12; } }
-              @media (prefers-reduced-motion: reduce) { .edge.flowing { animation: none; } }
-              .n-title { font: 600 16px var(--sans); }
-              .n-line { font: 13.5px var(--sans); fill: var(--text-secondary); }
-              .n-badge { font: 700 10.5px var(--sans); letter-spacing: 0.05em; text-transform: uppercase; }
-              .e-label { font: italic 12px var(--sans); fill: var(--text-muted); }
-            `}</style>
-            {EDGES.map((e, i) => (
-              <g key={i}>
-                <path d={path(e)} className={`edge ${running && e.flow ? "flowing" : ""}`} markerEnd="url(#arrow)" markerStart={e.both ? "url(#arrow)" : undefined} />
-                {e.label && (e.labelAt
-                  ? <text className="e-label" x={e.labelAt[0]} y={e.labelAt[1]} transform={`rotate(-90 ${e.labelAt[0]} ${e.labelAt[1]})`}>{e.label}</text>
-                  : <text className="e-label" x={(e.from[0] + (e.via?.[0]?.[0] ?? e.to[0])) / 2 + 8} y={(e.from[1] + e.to[1]) / 2}>{e.label}</text>)}
-              </g>
+        <div className="card card-pad stack" style={{ gap: 14 }}>
+          <div className="pm-goals" aria-label="What an inference platform is judged on">
+            <button className={`pm-goals-title ${sel === "goals" ? "sel" : ""}`} onClick={() => choose("goals")}>Judged on</button>
+            {goals.map(([a, b]) => <div key={a} className="pm-goal"><span>{a}</span><b>{b}</b></div>)}
+          </div>
+          <ol className="pm-path" aria-label="Path of one request">
+            {PATH.map((p, i) => (
+              <li key={p.id}>
+                <button className={`${hover === p.id ? "hot" : ""} ${sel === p.id ? "sel" : ""}`} onMouseEnter={() => setHover(p.id)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(p.id)} onBlur={() => setHover(null)} onClick={() => choose(p.id)}>
+                  <i>{i + 1}</i>{p.label}
+                </button>
+              </li>
             ))}
-            {NODES.map((n) => {
-              const st = STATUS[n.status];
-              const isGoals = n.id === "goals";
-              return (
-                <g key={n.id} className={`arch-node ${sel === n.id ? "sel" : ""}`} tabIndex={0} role="button" aria-label={`${n.title}: ${st.label}`}
-                  onClick={() => choose(n.id)} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && choose(n.id)}>
-                  {n.shape === "db" ? (
-                    <>
-                      <rect className="box" x={n.x} y={n.y + 10} width={n.w} height={n.h - 10} rx={6} fill={st.fill} stroke={st.stroke} strokeWidth={1.5} strokeDasharray={st.dash} />
-                      <ellipse cx={n.x + n.w / 2} cy={n.y + 10} rx={n.w / 2} ry={10} fill={st.fill} stroke={st.stroke} strokeWidth={1.5} strokeDasharray={st.dash} />
-                    </>
-                  ) : (
-                    <rect className="box" x={n.x} y={n.y} width={n.w} height={n.h} rx={12} fill={isGoals ? "var(--surface-1)" : st.fill}
-                      stroke={isGoals ? "var(--series-7, #6250d6)" : st.stroke} strokeWidth={1.5} strokeDasharray={isGoals ? "6 4" : st.dash} />
-                  )}
-                  <text className="n-title" x={n.x + 14} y={n.y + (n.shape === "db" ? 40 : 26)} fill={st.text}>{n.title}</text>
-                  {!isGoals && (
-                    <text className="n-badge" x={n.x + n.w - 10} y={n.y + n.h - 10} textAnchor="end" fill={n.status === "out" ? "var(--text-muted)" : n.status === "next" ? "var(--text-secondary)" : st.stroke === "var(--good)" ? "var(--good-text)" : st.stroke}>
-                      {st.label}
-                    </text>
-                  )}
-                  {(isGoals ? goals.map(([a, b]) => `${a}: ${b}`) : n.lines).map((l, i) => (
-                    <text key={i} className="n-line" style={isGoals ? { fontSize: 13 } : undefined} x={n.x + 14} y={n.y + (n.shape === "db" ? 62 : 50) + i * 19}>{isGoals ? "• " : ""}{l}</text>
-                  ))}
-                </g>
-              );
-            })}
-          </svg>
+          </ol>
+          <div className="pm-layers">
+            {LAYERS.map((l, li) => (
+              <section key={l.id} className="pm-layer">
+                <header><span className="pm-ln">{li + 1}</span><div><b>{l.title}</b><small>{l.sub}</small></div></header>
+                <div className="pm-cards">
+                  {l.nodes.map((id) => {
+                    const n = NODES.find((x) => x.id === id)!;
+                    const st = STATUS[n.status];
+                    return (
+                      <button key={id} className={`pm-card s-${n.status} ${sel === id ? "sel" : ""} ${hover === id ? "hot" : ""}`} onClick={() => choose(id)}
+                        onMouseEnter={() => setHover(id)} onMouseLeave={() => setHover(null)} aria-label={`${n.title}: ${st.label}`}>
+                        <span className="pm-top"><b>{n.title}</b>{STEP[id] && <i title={`Step ${STEP[id]} of a request`}>{STEP[id]}</i>}</span>
+                        <span className="pm-lines">{n.lines.join(" · ")}</span>
+                        <span className={`pm-status ${st.cls}`}>{st.icon}{st.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+          <p className="small muted" style={{ margin: 0 }}>Numbers follow one chat request through the gateway. Click any component for what it does in production and what this repo has for it.</p>
         </div>
 
         <div className="card arch-panel" ref={panel}>
@@ -250,7 +226,7 @@ export default function Architecture() {
                 )}
               </>
             )}
-            <p className="small muted" style={{ margin: 0 }}>The diagram follows a common reference layout for LLM serving. Boxes marked "Out of scope" are named so the boundary of this project is explicit, not implied.</p>
+            <p className="small muted" style={{ margin: 0 }}>Components marked "Out of scope" are named so the boundary of this project is explicit, not implied.</p>
           </div>
         </div>
       </div>
