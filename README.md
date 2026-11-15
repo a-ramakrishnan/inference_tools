@@ -8,6 +8,30 @@ Benchmarks and serving tools for small open LLMs on [llama.cpp](https://github.c
 
 Model used so far: Qwen2.5-1.5B-Instruct in Q4_K_M and Q8_0.
 
+## Screenshots
+
+All screenshots are from real runs on an Apple M5 MacBook Air (16 GB).
+
+**Overview:** headline numbers from the latest sweep, the machine and the models.
+
+![Overview page](docs/screenshots/overview.png)
+
+**Results:** time to first token, per-request and total throughput, and memory as concurrency rises. The banner flags a sweep whose end-of-run control measurement drifted.
+
+![Results page](docs/screenshots/results.png)
+
+**Request lifecycle:** where the time goes for 8 concurrent requests: waiting, prompt processing and decoding, per request.
+
+![Request lifecycle view](docs/screenshots/architecture-lifecycle.png)
+
+**Inside the worker:** llama.cpp slots and their KV cache, and a memory budget predicted from the GGUF header compared with the measured peak.
+
+![Inside the worker view](docs/screenshots/architecture-worker.png)
+
+**Gateway:** backend status, a streaming playground, and a 30-request burst: 4 run at a time, 16 wait, and the rest get 429.
+
+![Gateway page](docs/screenshots/gateway.png)
+
 ## Quick start
 
 You need Python 3.11+, Node 18+ and llama.cpp (`brew install llama.cpp`).
