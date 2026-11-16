@@ -63,6 +63,8 @@ uv venv && uv pip install -e '.[tracing]'
 
 Or run the gateway, both model servers and Jaeger with `docker compose up --build`.
 
+For an x86 comparison, [notebooks/colab_x86.ipynb](notebooks/colab_x86.ipynb) runs the cloud subset on a Colab CPU ([open in Colab](https://colab.research.google.com/github/a-ramakrishnan/inference_tools/blob/main/notebooks/colab_x86.ipynb)).
+
 ## More
 
 - [docs/GUIDE.md](docs/GUIDE.md): metrics, CLI options, the dashboard, the gateway, validation against `llama-bench`
